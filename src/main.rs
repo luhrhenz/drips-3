@@ -12,6 +12,8 @@ use tokio::net::TcpListener; // for TcpListener
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt}; // for .with() on registry
 use stellar::HorizonClient;
+use services::circuit_breaker::CircuitBreaker;
+use chrono::Duration;
 
 #[derive(Clone)] // <-- Add Clone
 pub struct AppState {
@@ -39,8 +41,21 @@ async fn main() -> anyhow::Result<()> {
     migrator.run(&pool).await?;
     tracing::info!("Database migrations completed");
 
+    // Redis client
+    let redis_client = redis::Client::open(config.redis_url.clone())?;
+
+    // Circuit breaker for Horizon
+    let mut horizon_breaker = CircuitBreaker::new(
+        "horizon".to_string(),
+        redis_client.clone(),
+        5, // failure_threshold
+        chrono::Duration::minutes(10), // reset_timeout
+    );
+    horizon_breaker.load_from_redis().await?;
+    tracing::info!("Horizon circuit breaker initialized");
+
     // Initialize Stellar Horizon client
-    let horizon_client = HorizonClient::new(config.stellar_horizon_url.clone());
+    let horizon_client = HorizonClient::new(config.stellar_horizon_url.clone(), horizon_breaker);
     tracing::info!("Stellar Horizon client initialized with URL: {}", config.stellar_horizon_url);
 
     // Build router with state
