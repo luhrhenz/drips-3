@@ -12,7 +12,6 @@ pub enum CircuitBreakerError {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
 pub enum CircuitState {
     Closed,
     Open,
@@ -27,6 +26,7 @@ pub struct CircuitBreakerState {
     pub last_error: Option<String>,
 }
 
+#[derive(Clone)]
 pub struct CircuitBreaker {
     service_name: String,
     redis_client: RedisClient,
