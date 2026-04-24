@@ -180,6 +180,7 @@ mod tests {
             allowed_ips: crate::config::AllowedIps::Any,
             backup_dir: "/tmp".to_string(),
             backup_encryption_key: None,
+            db_timeouts: crate::config::DbTimeoutConfig::default(),
         };
 
         assert!(validate_env_vars(&config).is_err());
@@ -201,6 +202,7 @@ mod tests {
             allowed_ips: crate::config::AllowedIps::Any,
             backup_dir: "/tmp".to_string(),
             backup_encryption_key: None,
+            db_timeouts: crate::config::DbTimeoutConfig::default(),
         };
 
         assert!(validate_env_vars(&config).is_err());

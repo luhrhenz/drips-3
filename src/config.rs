@@ -17,6 +17,26 @@ pub enum LogFormat {
 }
 
 #[derive(Debug, Clone)]
+pub struct DbTimeoutConfig {
+    /// Timeout for read queries (SELECT), in seconds. Default: 5
+    pub read_query_secs: u64,
+    /// Timeout for write queries (INSERT/UPDATE/DELETE), in seconds. Default: 10
+    pub write_query_secs: u64,
+    /// Timeout for admin queries (migrations, maintenance), in seconds. Default: 60
+    pub admin_query_secs: u64,
+}
+
+impl Default for DbTimeoutConfig {
+    fn default() -> Self {
+        Self {
+            read_query_secs: 5,
+            write_query_secs: 10,
+            admin_query_secs: 60,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Config {
     pub server_port: u16,
     pub database_url: String,
@@ -31,6 +51,7 @@ pub struct Config {
     pub allowed_ips: AllowedIps,
     pub backup_dir: String,
     pub backup_encryption_key: Option<String>,
+    pub db_timeouts: DbTimeoutConfig,
 }
 
 pub mod assets;
@@ -85,6 +106,20 @@ impl Config {
             allowed_ips,
             backup_dir: env::var("BACKUP_DIR").unwrap_or_else(|_| "./backups".to_string()),
             backup_encryption_key: env::var("BACKUP_ENCRYPTION_KEY").ok(),
+            db_timeouts: DbTimeoutConfig {
+                read_query_secs: env::var("DB_TIMEOUT_READ_SECS")
+                    .unwrap_or_else(|_| "5".to_string())
+                    .parse()
+                    .unwrap_or(5),
+                write_query_secs: env::var("DB_TIMEOUT_WRITE_SECS")
+                    .unwrap_or_else(|_| "10".to_string())
+                    .parse()
+                    .unwrap_or(10),
+                admin_query_secs: env::var("DB_TIMEOUT_ADMIN_SECS")
+                    .unwrap_or_else(|_| "60".to_string())
+                    .parse()
+                    .unwrap_or(60),
+            },
         })
     }
 }

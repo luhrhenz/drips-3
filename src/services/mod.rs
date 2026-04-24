@@ -5,6 +5,7 @@ pub mod scheduler;
 pub mod settlement;
 pub mod transaction_processor;
 pub mod transaction_processor_job;
+pub mod webhook_dispatcher;
 
 pub use backup::BackupService;
 pub use feature_flags::FeatureFlagService;

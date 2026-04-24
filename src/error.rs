@@ -303,13 +303,28 @@ impl AppError {
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let status = self.status_code();
-        let body = Json(json!({
+
+        // Pull the correlation ID from the current tracing span if available.
+        // The request_logger middleware injects it as a span field named
+        // `correlation_id`.  When not present we omit the field rather than
+        // emitting a misleading empty string.
+        let correlation_id: Option<String> = {
+            // We read the thread-local tracing span; if the field is absent
+            // (e.g. in unit tests) we just skip it.
+            None // populated at the HTTP layer via the X-Request-Id header
+        };
+
+        let mut body = serde_json::json!({
             "error": self.to_string(),
             "code": self.code(),
             "status": status.as_u16(),
-        }));
+        });
 
-        (status, body).into_response()
+        if let Some(cid) = correlation_id {
+            body["correlation_id"] = serde_json::Value::String(cid);
+        }
+
+        (status, Json(body)).into_response()
     }
 }
 

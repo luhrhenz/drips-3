@@ -22,6 +22,7 @@ pub use crate::readiness::ReadinessState;
 use crate::services::feature_flags::FeatureFlagService;
 use crate::stellar::HorizonClient;
 use axum::{
+    middleware as axum_middleware,
     routing::{get, post},
     Router,
 };
@@ -66,5 +67,11 @@ pub fn create_app(app_state: AppState) -> Router {
         .route("/transactions/:id", get(handlers::webhook::get_transaction))
         .route("/graphql", post(handlers::graphql::graphql_handler))
         .route("/export", get(handlers::export::export_transactions))
+        // Admin: webhook endpoint health scores
+        .route("/admin/webhooks/health", get(handlers::admin::list_webhook_health))
+        .route("/admin/webhooks/health/:id", get(handlers::admin::get_webhook_health))
         .with_state(api_state)
+        .layer(axum_middleware::from_fn(
+            middleware::request_logger::request_logger_middleware,
+        ))
 }
