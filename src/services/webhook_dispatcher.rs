@@ -107,11 +107,12 @@ impl WebhookDispatcher {
         })?;
 
         for ep in endpoints {
-            sqlx::query(
+            let result = sqlx::query(
                 r#"
                 INSERT INTO webhook_deliveries
                     (endpoint_id, transaction_id, event_type, payload, status, next_attempt_at)
                 VALUES ($1, $2, $3, $4, 'pending', NOW())
+                ON CONFLICT (endpoint_id, transaction_id, event_type) DO NOTHING
                 "#,
             )
             .bind(ep.id)
@@ -120,6 +121,15 @@ impl WebhookDispatcher {
             .bind(&payload)
             .execute(&self.pool)
             .await?;
+
+            if result.rows_affected() == 0 {
+                tracing::debug!(
+                    endpoint_id = %ep.id,
+                    transaction_id = %transaction_id,
+                    event_type = event_type,
+                    "Skipped duplicate webhook delivery"
+                );
+            }
         }
 
         Ok(())
@@ -720,4 +730,9 @@ mod tests {
         assert!(!dispatcher.matches_filters(&endpoint, &too_small));
         assert!(!dispatcher.matches_filters(&endpoint, &too_large));
     }
+
+    // Note: Integration test for enqueue deduplication should verify that
+    // calling enqueue twice for the same (endpoint_id, transaction_id, event_type)
+    // creates only one delivery record due to the unique constraint and
+    // ON CONFLICT DO NOTHING clause.
 }
